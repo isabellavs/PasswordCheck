@@ -2,10 +2,11 @@
 # Password Checker
 # 2020/11/20
 # ---------------------------------------------------------------------------
+import PySimpleGUI as sg
 import requests
 import hashlib
-import sys
 
+password = ''
 
 def make_sha1_hash(passwd):
     sha1pass = hashlib.sha1(passwd.encode('utf-8')).hexdigest().upper()
@@ -27,26 +28,38 @@ def check_leaks(api_response, hash_tail):
             return count
     return 0
 
+# Create a user input window
+#sg.theme_previewer() # enable this to see what themes are available.
+sg.theme('DarkTeal4')
 
-def main(args):
-    with open('tocheck.txt') as pass_file:
-        pass_list = pass_file.readlines()
-        print(pass_list)
-        for passwd in pass_list:
-            pass_to_check = passwd.rstrip('\n')
-            api_pass_hash = make_sha1_hash(pass_to_check)
-            response = request_api_data(api_pass_hash[:5])
-            count = check_leaks(response, api_pass_hash[5:])
-            if count:
-                print(f'Password {pass_to_check} has been hacked {count} times')
-            else:
-                print(f'Password {pass_to_check} is safe.')
-    return 'done'
+# All the stuff inside your window.
+layout = [  [sg.Text('Check if a password has been hacked')],
+            [sg.Text('Enter password to be checked'), sg.InputText('', key='Password', password_char='*')],
+            [sg.Checkbox('Show password in response', default=False, key='-SHOW-')],
+            [sg.Button('Check'), sg.Button('Quit')] ]
 
-# ---------------------------------------------------------------------------
+# Create the Window
+window = sg.Window('Password Checker', layout, alpha_channel=.5, grab_anywhere=True)
 
-if __name__ == '__main__':
-    sys.exit(main(sys.argv[1]))
+# Event Loop to process "events" and get the "values" of the inputs
+while True:
+    event, values = window.read()
+    if event == sg.WIN_CLOSED or event == 'Quit': # if user closes window or clicks cancel
+        break
 
+    if values['-SHOW-'] == True:
+        password = values['Password']
+    else:
+        password = 'you entered'
+
+    pass_to_check = values['Password'].rstrip('\n')
+    api_pass_hash = make_sha1_hash(pass_to_check)
+    response = request_api_data(api_pass_hash[:5])
+    count = check_leaks(response, api_pass_hash[5:])
+
+    sg.Popup('The password', password,  'has been hacked', count, 'times', keep_on_top=True, no_titlebar=True)
+    window['Password'].Update('')
+
+window.close()
 
 # -- EOF --------------------------------------------------------------------
